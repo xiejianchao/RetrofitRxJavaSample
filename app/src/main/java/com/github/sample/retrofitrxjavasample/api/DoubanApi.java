@@ -11,7 +11,7 @@ import rx.Observable;
  * Created by xiejc on 16/9/9.
  *
  */
-public interface MoiveService {
+public interface DoubanApi {
 
 //    https://api.douban.com/v2/movie/top250?start=0&count=10
 
@@ -23,8 +23,8 @@ public interface MoiveService {
 
     @POST("v2/movie/top250")
     Observable<MovieModel> getMoiveTopWithRxJava (
-            @Query("start") String start,
-            @Query("count") String count
+            @Query("start") int start,
+            @Query("count") int count
     );
 
 

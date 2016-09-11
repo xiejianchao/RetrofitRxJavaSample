@@ -26,6 +26,12 @@
         android:layout_height="wrap_content"
         android:text="Retrofit Rxjava Post"/>
 
+    <Button
+        android:id="@+id/btn_rxjava_zip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Retrofit Rxjava Zip"/>
+
 
 
 </LinearLayout>
