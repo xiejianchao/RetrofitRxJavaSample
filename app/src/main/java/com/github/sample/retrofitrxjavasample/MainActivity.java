@@ -49,6 +49,14 @@ public class MainActivity extends AppCompatActivity {
         ApiManager.getMovieTopWithRxJava(0,10);
     }
 
+    /**
+     * 这是一个非常实用的操作，有时候我们需要请求两个不同的接口，将两个接口的数据都拿到后才能进行下一步的操作
+     * 传统做法你需要请求两次网络，在第一次网络请求成功的回调里执行第二次网络请求和保存第一次请求的结果，然后
+     * 在第二次网络请求成功的回调里合并这两次的结果，异常繁琐，而使用RxJava和Retrofit进行基于RxJava的zip
+     * 操作，将会异常轻松，一个链式调用即可。
+     * <br<
+     * 本例将GankApi和DoubanApi的请求结果合并成一个TwoResultModel的结果
+     */
     @OnClick(R.id.btn_rxjava_zip)
     public void zipRxJavaClick() {
         Observable.zip(ApiManager.getGankApi().getBeauties(200, 1),
