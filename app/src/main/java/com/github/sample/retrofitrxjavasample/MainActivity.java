@@ -1,21 +1,35 @@
 package com.github.sample.retrofitrxjavasample;
 
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 
+import com.github.sample.retrofitrxjavasample.api.DownloadService;
 import com.github.sample.retrofitrxjavasample.api.GankApi;
 import com.github.sample.retrofitrxjavasample.model.GankBeauty;
 import com.github.sample.retrofitrxjavasample.model.MovieModel;
 import com.github.sample.retrofitrxjavasample.model.TwoResultModel;
 import com.github.sample.retrofitrxjavasample.net.ApiManager;
+import com.github.sample.retrofitrxjavasample.net.ServiceGenerator;
+import com.github.sample.retrofitrxjavasample.net.download.ProgressResponseListener;
+import com.github.sample.retrofitrxjavasample.utils.FileUtils;
 import com.orhanobut.logger.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import okhttp3.ResponseBody;
+import retrofit2.Retrofit;
 import rx.Observable;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
+import rx.functions.Func1;
 import rx.functions.Func2;
 import rx.schedulers.Schedulers;
 
@@ -34,6 +48,70 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         ButterKnife.bind(this);
+
+
+    }
+
+    /**
+     * 待封装优化，最好能够只传入一个url，一个文件保存目录，一个下载进度回调即可下载
+     */
+    @OnClick(R.id.btn_download)
+    public void downloadClick() {
+
+        ProgressResponseListener progressResponseListener = new ProgressResponseListener() {
+
+            @Override
+            public void onResponseProgress(long bytesRead, long contentLength, boolean done) {
+                int progress = (int) ((bytesRead * 100) / contentLength);
+
+                Log.d(TAG,"bytesRead:" + bytesRead + ",contentLength:" + contentLength + ",当前下载进度：" + progress + "%");
+            }
+        };
+        String url = "http://gdown.baidu.com/data/wisegame/20eb4c5985bfa304/weixin_861.apk";
+
+        Retrofit retrofit = ServiceGenerator.getRetrofit(progressResponseListener);
+        retrofit.create(DownloadService.class)
+                .download(url)
+                .subscribeOn(Schedulers.io())
+                .unsubscribeOn(Schedulers.io())
+                .map(new Func1<ResponseBody, InputStream>() {
+                    @Override
+                    public InputStream call(ResponseBody responseBody) {
+                        return responseBody.byteStream();
+                    }
+                })
+                .observeOn(Schedulers.computation())
+                .doOnNext(new Action1<InputStream>() {
+                    @Override
+                    public void call(InputStream inputStream) {
+                        try {
+                            File outputFile = new File(Environment.getExternalStoragePublicDirectory
+                                    (Environment.DIRECTORY_DOWNLOADS), "file.apk");
+                            FileUtils.writeFile(inputStream, outputFile);
+                            Logger.d("inputStream:" + inputStream);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e.getMessage(), e);
+                        }
+                    }
+                })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Subscriber<InputStream>() {
+                    @Override
+                    public void onCompleted() {
+                        Logger.d("onCompleted");
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Logger.d("onError:" + e.getMessage());
+                    }
+
+                    @Override
+                    public void onNext(InputStream inputStream) {
+//                        Logger.d("onNext:" + inputStream);
+                    }
+                });
 
 
     }
