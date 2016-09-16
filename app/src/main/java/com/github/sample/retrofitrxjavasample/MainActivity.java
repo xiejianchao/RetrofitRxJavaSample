@@ -1,7 +1,9 @@
 package com.github.sample.retrofitrxjavasample;
 
+import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -12,18 +14,26 @@ import com.github.sample.retrofitrxjavasample.model.GankBeauty;
 import com.github.sample.retrofitrxjavasample.model.MovieModel;
 import com.github.sample.retrofitrxjavasample.model.TwoResultModel;
 import com.github.sample.retrofitrxjavasample.net.ApiManager;
+import com.github.sample.retrofitrxjavasample.net.HttpClientHelper2;
 import com.github.sample.retrofitrxjavasample.net.ServiceGenerator;
 import com.github.sample.retrofitrxjavasample.net.download.ProgressResponseListener;
+import com.github.sample.retrofitrxjavasample.net.progress.DownloadProgressHandler;
 import com.github.sample.retrofitrxjavasample.utils.FileUtils;
+import com.github.sample.retrofitrxjavasample.utils.Util;
 import com.orhanobut.logger.Logger;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 import retrofit2.Retrofit;
 import rx.Observable;
 import rx.Subscriber;
@@ -39,6 +49,8 @@ import rx.schedulers.Schedulers;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
+
+    private String url = "http://gdown.baidu.com/data/wisegame/20eb4c5985bfa304/weixin_861.apk";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,17 +69,149 @@ public class MainActivity extends AppCompatActivity {
      */
     @OnClick(R.id.btn_download)
     public void downloadClick() {
+        //在下载进度更新回调在子线程，所以使用起来不够方便
+        rxjavaDownload();
+    }
 
+    @OnClick(R.id.btn_download2)
+    public void downloadClick2() {
+        //进度更新在主线程中，使用retrofit直接下载
+        download2();
+    }
+
+    @OnClick(R.id.btn_download3)
+    public void downloadClick3() {
+        //使用retrofit + rxjava下载，并且进度更新在主线程
+        download3();
+
+    }
+
+    private void download3() {
+        DownloadProgressHandler progress = new DownloadProgressHandler() {
+
+            @Override
+            protected void onProgress(long bytesRead, long contentLength, boolean done) {
+                Log.v(TAG,"onProgress 是否在主线程中运行:" +  Util.isMainThread());
+
+                Log.e("onProgress",String.format("%d%% done\n",(100 * bytesRead) / contentLength));
+                Log.e("done","--->" + String.valueOf(done));
+            }
+        };
+
+        Retrofit retrofit = ServiceGenerator.getRetrofit(progress);
+        retrofit.create(DownloadService.class)
+                .download(url)
+                .subscribeOn(Schedulers.io())
+                .unsubscribeOn(Schedulers.io())
+                .map(new Func1<ResponseBody, InputStream>() {
+                    @Override
+                    public InputStream call(ResponseBody responseBody) {
+                        Log.d(TAG,"map 是否在主线程中运行:" +  Util.isMainThread());
+                        return responseBody.byteStream();
+                    }
+                })
+                .doOnNext(new Action1<InputStream>() {
+                    @Override
+                    public void call(InputStream inputStream) {
+                        try {
+                            Log.d(TAG,"doOnNext 是否在主线程中运行:" +  Util.isMainThread());
+                            File outputFile = new File(Environment.getExternalStoragePublicDirectory
+                                    (Environment.DIRECTORY_DOWNLOADS), "file.apk");
+                            FileUtils.writeFile(inputStream, outputFile);
+                            Log.d(TAG,"inputStream:" + inputStream);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e.getMessage(), e);
+                        }
+                    }
+                })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Subscriber<InputStream>() {
+                    @Override
+                    public void onCompleted() {
+                        Logger.d("onCompleted");
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Logger.d("onError:" + e.getMessage());
+                    }
+
+                    @Override
+                    public void onNext(InputStream inputStream) {
+//                        Logger.d("onNext:" + inputStream);
+                    }
+                });
+    }
+
+    private void download2() {
+        //监听下载进度
+        final ProgressDialog dialog = new ProgressDialog(this);
+        dialog.setProgressNumberFormat("%1d KB/%2d KB");
+        dialog.setTitle("下载");
+        dialog.setMessage("正在下载，请稍后...");
+        dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        dialog.setCancelable(false);
+        dialog.show();
+
+        Retrofit retrofit2 = ServiceGenerator.getRetrofit2();
+        HttpClientHelper2.setProgressHandler(new DownloadProgressHandler() {
+            @Override
+            protected void onProgress(long bytesRead, long contentLength, boolean done) {
+                Log.e("是否在主线程中运行", Util.isMainThread() + "");
+                Log.e("onProgress",String.format("%d%% done\n",(100 * bytesRead) / contentLength));
+                Log.e("done","--->" + String.valueOf(done));
+
+                dialog.setMax((int) (contentLength/1024));
+                dialog.setProgress((int) (bytesRead/1024));
+
+                if(done){
+                    dialog.dismiss();
+                }
+            }
+        });
+
+        DownloadService downloadService = retrofit2.create(DownloadService.class);
+
+        Call<ResponseBody> call = downloadService.download2(url);
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, final Response<ResponseBody> response) {
+                //在主线程中如果直接操作io，会导致网络异常的错误，所以必须在子线程中处理
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            InputStream inputStream = response.body().byteStream();
+                            File outputFile = new File(Environment.getExternalStoragePublicDirectory
+                                    (Environment.DIRECTORY_DOWNLOADS), "file123.apk");
+                            FileUtils.writeFile(inputStream, outputFile);
+                            Logger.d("inputStream:" + inputStream);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e.getMessage(), e);
+                        }
+                    }
+                }).start();
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Logger.d("onFailure:" + t.getMessage());
+            }
+        });
+    }
+
+    private void rxjavaDownload() {
         ProgressResponseListener progressResponseListener = new ProgressResponseListener() {
 
             @Override
             public void onResponseProgress(long bytesRead, long contentLength, boolean done) {
                 int progress = (int) ((bytesRead * 100) / contentLength);
-
+                Log.e("是否在主线程中运行", Util.isMainThread() + "");
                 Log.d(TAG,"bytesRead:" + bytesRead + ",contentLength:" + contentLength + ",当前下载进度：" + progress + "%");
             }
         };
-        String url = "http://gdown.baidu.com/data/wisegame/20eb4c5985bfa304/weixin_861.apk";
 
         Retrofit retrofit = ServiceGenerator.getRetrofit(progressResponseListener);
         retrofit.create(DownloadService.class)
@@ -77,6 +221,7 @@ public class MainActivity extends AppCompatActivity {
                 .map(new Func1<ResponseBody, InputStream>() {
                     @Override
                     public InputStream call(ResponseBody responseBody) {
+                        Logger.e("map 是否在主线程中运行:" +  Util.isMainThread());
                         return responseBody.byteStream();
                     }
                 })
@@ -85,6 +230,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void call(InputStream inputStream) {
                         try {
+                            Logger.e("doOnNext 是否在主线程中运行:" + Util.isMainThread());
                             File outputFile = new File(Environment.getExternalStoragePublicDirectory
                                     (Environment.DIRECTORY_DOWNLOADS), "file.apk");
                             FileUtils.writeFile(inputStream, outputFile);
@@ -112,8 +258,6 @@ public class MainActivity extends AppCompatActivity {
 //                        Logger.d("onNext:" + inputStream);
                     }
                 });
-
-
     }
 
     @OnClick(R.id.btn_post)

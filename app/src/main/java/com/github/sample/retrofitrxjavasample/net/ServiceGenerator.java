@@ -2,7 +2,9 @@ package com.github.sample.retrofitrxjavasample.net;
 
 import com.github.sample.retrofitrxjavasample.api.DownloadService;
 import com.github.sample.retrofitrxjavasample.net.download.ProgressResponseListener;
+import com.github.sample.retrofitrxjavasample.net.progress.DownloadProgressHandler;
 import com.github.sample.retrofitrxjavasample.net.upload.ProgressRequestListener;
+import com.github.sample.retrofitrxjavasample.utils.StringUtils;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +35,24 @@ public class ServiceGenerator {
         Retrofit build = builder
                 .baseUrl(HOST)
                 .client(HttpClientHelper.addProgressResponseListener(listener))
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .build();
+        return build;
+    }
+
+    public static Retrofit getRetrofit2() {
+        Retrofit build = builder
+                .baseUrl(HOST)
+                .client(HttpClientHelper2.addProgressResponseListener())
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .build();
+        return build;
+    }
+
+    public static Retrofit getRetrofit(DownloadProgressHandler progressHandler) {
+        Retrofit build = builder
+                .baseUrl(HOST)
+                .client(HttpClientHelper.addProgressResponseListener(progressHandler))
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
                 .build();
         return build;

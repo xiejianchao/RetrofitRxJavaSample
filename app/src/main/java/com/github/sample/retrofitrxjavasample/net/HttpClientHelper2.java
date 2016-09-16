@@ -1,5 +1,8 @@
 package com.github.sample.retrofitrxjavasample.net;
 
+import android.util.Log;
+
+import com.github.sample.retrofitrxjavasample.model.ProgressBean;
 import com.github.sample.retrofitrxjavasample.net.download.ProgressResponseBody;
 import com.github.sample.retrofitrxjavasample.net.download.ProgressResponseListener;
 import com.github.sample.retrofitrxjavasample.net.progress.DownloadProgressHandler;
@@ -18,43 +21,35 @@ import okhttp3.Response;
 /**
  * Created by Cmad on 2016/4/28.
  */
-public class HttpClientHelper {
+public class HttpClientHelper2 {
 
     private static final int DEFAULT_TIMEOUT = 15;
-
-    private static ProgressHandler mProgressHandler;
+    private static ProgressBean progressBean = new ProgressBean();
+    private static DownloadProgressHandler mProgressHandler;
 
     /**
      * 包装OkHttpClient，用于下载文件的回调
-     * @param progressListener 进度回调接口
      * @return 包装后的OkHttpClient
      */
-    public static OkHttpClient addProgressResponseListener(final ProgressResponseListener progressListener){
-        OkHttpClient.Builder client = new OkHttpClient.Builder();
+    public static OkHttpClient addProgressResponseListener(){
 
-        client.retryOnConnectionFailure(true)
-                .connectTimeout(DEFAULT_TIMEOUT, TimeUnit.SECONDS)
-                //增加拦截器
-                .addInterceptor(new Interceptor() {
-                    @Override
-                    public Response intercept(Chain chain) throws IOException {
-                        //拦截
-                        Response originalResponse = chain.proceed(chain.request());
+        //该方法在子线程中运行
+        final ProgressResponseListener progressListener = new ProgressResponseListener() {
 
-                        //包装响应体并返回
-                        return originalResponse.newBuilder()
-                                .body(new ProgressResponseBody(originalResponse.body(), progressListener))
-                                .build();
-                    }
-                });
-        return client.build();
-    }
-    /**
-     * 包装OkHttpClient，用于下载文件的回调
-     * @param progressListener 进度回调接口
-     * @return 包装后的OkHttpClient
-     */
-    public static OkHttpClient addProgressResponseListener(final DownloadProgressHandler progressListener){
+            @Override
+            public void onResponseProgress(long bytesRead, long contentLength, boolean done) {
+                Log.d("progress:",String.format("%d%% done\n",(100 * bytesRead) / contentLength));
+                if (mProgressHandler == null){
+                    return;
+                }
+
+                progressBean.setBytesRead(bytesRead);
+                progressBean.setContentLength(contentLength);
+                progressBean.setDone(done);
+                mProgressHandler.sendMessage(progressBean);
+            }
+        };
+
         OkHttpClient.Builder client = new OkHttpClient.Builder();
 
         client.retryOnConnectionFailure(true)
@@ -98,7 +93,7 @@ public class HttpClientHelper {
         return client.build();
     }
 
-    public static void setProgressHandler(ProgressHandler progressHandler){
+    public static void setProgressHandler(DownloadProgressHandler progressHandler){
         mProgressHandler = progressHandler;
     }
 

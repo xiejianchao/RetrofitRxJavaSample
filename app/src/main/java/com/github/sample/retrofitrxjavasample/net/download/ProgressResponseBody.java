@@ -3,8 +3,9 @@ package com.github.sample.retrofitrxjavasample.net.download;
 /**
  * Created by Cmad on 2016/4/28.
  */
-
-import com.orhanobut.logger.Logger;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 
 import java.io.IOException;
 
@@ -16,16 +17,25 @@ import okio.ForwardingSource;
 import okio.Okio;
 import okio.Source;
 
+import com.github.sample.retrofitrxjavasample.model.ProgressBean;
+import com.github.sample.retrofitrxjavasample.net.progress.DownloadProgressHandler;
+import com.orhanobut.logger.Logger;
+
 /**
  * 包装的响体，处理进度
  */
 public class ProgressResponseBody extends ResponseBody {
+    private static final String TAG = ProgressResponseBody.class.getSimpleName();
     //实际的待包装响应体
     private final ResponseBody responseBody;
     //进度回调接口
-    private final ProgressResponseListener progressListener;
+    private ProgressResponseListener progressListener;
     //包装完成的BufferedSource
     private BufferedSource bufferedSource;
+
+    private MyHandler myHandler;
+
+    private DownloadProgressHandler downloadProgressHandler;
 
     /**
      * 构造函数，赋值
@@ -36,6 +46,17 @@ public class ProgressResponseBody extends ResponseBody {
     public ProgressResponseBody(ResponseBody responseBody, ProgressResponseListener progressListener) {
         this.responseBody = responseBody;
         this.progressListener = progressListener;
+
+        myHandler = new MyHandler(Looper.getMainLooper());
+    }
+    /**
+     * 构造函数，赋值
+     *  @param responseBody     待包装的响应体
+     * @param downloadProgressHandler 回调接口
+     */
+    public ProgressResponseBody(ResponseBody responseBody, DownloadProgressHandler downloadProgressHandler) {
+        this.responseBody = responseBody;
+        this.downloadProgressHandler = downloadProgressHandler;
     }
 
 
@@ -90,8 +111,7 @@ public class ProgressResponseBody extends ResponseBody {
             public long read(Buffer sink, long byteCount) throws IOException {
                 long bytesRead = super.read(sink, byteCount);
 
-//                Logger.e("totalBytesRead:" + totalBytesRead);
-//                Logger.e("responseBody.contentLength():" + responseBody.contentLength());
+
 
                 //增加当前读取的字节数，如果读取完成了bytesRead会返回-1
                 totalBytesRead += bytesRead != -1 ? bytesRead : 0;
@@ -99,8 +119,36 @@ public class ProgressResponseBody extends ResponseBody {
                 if(progressListener != null){
                     progressListener.onResponseProgress(totalBytesRead, responseBody.contentLength(), bytesRead == -1);
                 }
+
+
+//                Log.e(TAG,"totalBytesRead:" + totalBytesRead);
+//                Log.e(TAG,"responseBody.contentLength():" + responseBody.contentLength());
+//                Log.e(TAG,"downloadProgressHandler:" + downloadProgressHandler);
+
+                if (downloadProgressHandler != null) {
+                    ProgressBean progressBean = new ProgressBean();
+                    progressBean.setBytesRead(totalBytesRead);
+                    progressBean.setContentLength(responseBody.contentLength());
+                    boolean done = bytesRead == -1;
+                    progressBean.setDone(done);
+                    downloadProgressHandler.sendMessage(progressBean);
+                }
+
+
                 return bytesRead;
             }
         };
     }
+
+    private static class MyHandler extends Handler {
+        /**
+         * Use the provided {@link Looper} instead of the default one.
+         *
+         * @param looper The looper, must not be null.
+         */
+        public MyHandler(Looper looper) {
+            super(looper);
+        }
+    }
+
 }

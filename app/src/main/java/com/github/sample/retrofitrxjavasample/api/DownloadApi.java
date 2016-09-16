@@ -8,16 +8,15 @@ import retrofit2.http.Url;
 import rx.Observable;
 
 /**
- * Created by JokAr on 16/7/5.
+ * Created by ljd on 3/29/16.
  */
-public interface DownloadService {
+public interface DownloadApi {
 
+    @GET("/mobilesafe/shouji360/360safesis/360MobileSafe_6.2.3.1060.apk")
+    Call<ResponseBody> retrofitDownload();
 
     @Streaming
     @GET
     Observable<ResponseBody> download(@Url String url);
 
-    @Streaming
-    @GET
-    Call<ResponseBody> download2(@Url String url);
 }
