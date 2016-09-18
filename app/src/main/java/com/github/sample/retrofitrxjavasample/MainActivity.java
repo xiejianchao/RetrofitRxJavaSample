@@ -3,13 +3,11 @@ package com.github.sample.retrofitrxjavasample;
 import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 
 import com.github.sample.retrofitrxjavasample.api.DownloadService;
-import com.github.sample.retrofitrxjavasample.api.GankApi;
 import com.github.sample.retrofitrxjavasample.model.GankBeauty;
 import com.github.sample.retrofitrxjavasample.model.MovieModel;
 import com.github.sample.retrofitrxjavasample.model.TwoResultModel;
@@ -22,10 +20,7 @@ import com.github.sample.retrofitrxjavasample.utils.FileUtils;
 import com.github.sample.retrofitrxjavasample.utils.Util;
 import com.orhanobut.logger.Logger;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 
 import butterknife.ButterKnife;
