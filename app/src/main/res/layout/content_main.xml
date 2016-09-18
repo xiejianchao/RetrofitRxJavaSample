@@ -18,37 +18,45 @@
         android:id="@+id/btn_post"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Retrofit Simple Post"/>
+        android:text="Retrofit普通的Post请求"/>
 
     <Button
         android:id="@+id/btn_post_rxjava"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Retrofit Rxjava Post"/>
+        android:text="Retrofit + Rxjava进行Post请求"/>
 
     <Button
         android:id="@+id/btn_rxjava_zip"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Retrofit Rxjava Zip"/>
+        android:text="Retrofit + Rxjava 进行合并压缩操作"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:text="@string/sample_retrofit_download_desc"
+        android:textColor="@android:color/black"
+        />
 
     <Button
         android:id="@+id/btn_download"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Retrofit download"/>
+        android:text="Retrofit + RxJava下载，进度更新在子线程"/>
 
     <Button
         android:id="@+id/btn_download2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Retrofit download2"/>
+        android:text="Retrofit下载和进度更新提示"/>
 
     <Button
         android:id="@+id/btn_download3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Retrofit download3"/>
+        android:text="Retrofit + RxJava下载，final"/>
 
 
 

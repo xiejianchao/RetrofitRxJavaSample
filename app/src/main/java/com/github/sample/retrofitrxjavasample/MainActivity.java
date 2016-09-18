@@ -12,8 +12,8 @@ import com.github.sample.retrofitrxjavasample.model.GankBeauty;
 import com.github.sample.retrofitrxjavasample.model.MovieModel;
 import com.github.sample.retrofitrxjavasample.model.TwoResultModel;
 import com.github.sample.retrofitrxjavasample.net.ApiManager;
+import com.github.sample.retrofitrxjavasample.net.HttpClientHelper;
 import com.github.sample.retrofitrxjavasample.net.HttpClientHelper2;
-import com.github.sample.retrofitrxjavasample.net.ServiceGenerator;
 import com.github.sample.retrofitrxjavasample.net.download.ProgressResponseListener;
 import com.github.sample.retrofitrxjavasample.net.progress.DownloadProgressHandler;
 import com.github.sample.retrofitrxjavasample.utils.FileUtils;
@@ -30,6 +30,8 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
+import retrofit2.converter.gson.GsonConverterFactory;
 import rx.Observable;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
@@ -46,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private String url = "http://gdown.baidu.com/data/wisegame/20eb4c5985bfa304/weixin_861.apk";
+    private String HOST = "http://gdown.baidu.com/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +59,6 @@ public class MainActivity extends AppCompatActivity {
 
         ButterKnife.bind(this);
 
-
     }
 
     /**
@@ -64,37 +66,55 @@ public class MainActivity extends AppCompatActivity {
      */
     @OnClick(R.id.btn_download)
     public void downloadClick() {
-        //在下载进度更新回调在子线程，所以使用起来不够方便
+        //下载进度更新回调在子线程，所以使用起来不够方便
         rxjavaDownload();
     }
 
     @OnClick(R.id.btn_download2)
     public void downloadClick2() {
-        //进度更新在主线程中，使用retrofit直接下载
+        //使用retrofit下载，进度更新在主线程中，使用retrofit直接下载,但是缺点是在成功的回调onResponse中，
+        //需要进行保存文件的操作，这个回调是在主线程中执行，所以要异步保存。
         download2();
     }
 
     @OnClick(R.id.btn_download3)
     public void downloadClick3() {
-        //使用retrofit + rxjava下载，并且进度更新在主线程
+        //使用retrofit + rxjava下载，并且进度更新在主线程，保存文件的操作通过rxjava直接在子线程中执行，完美~
         download3();
 
     }
 
     private void download3() {
-        DownloadProgressHandler progress = new DownloadProgressHandler() {
+        final ProgressDialog dialog = createProgressDialog();
+
+        DownloadProgressHandler progressHandler = new DownloadProgressHandler() {
 
             @Override
             protected void onProgress(long bytesRead, long contentLength, boolean done) {
-                Log.v(TAG,"onProgress 是否在主线程中运行:" +  Util.isMainThread());
+                Log.v(TAG,"3 onProgress 是否在主线程中运行:" +  Util.isMainThread());
 
                 Log.e("onProgress",String.format("%d%% done\n",(100 * bytesRead) / contentLength));
                 Log.e("done","--->" + String.valueOf(done));
+
+                dialog.setMax((int) (contentLength/1024));
+                dialog.setProgress((int) (bytesRead/1024));
+
+                if(done){
+                    dialog.dismiss();
+                }
             }
         };
 
-        Retrofit retrofit = ServiceGenerator.getRetrofit(progress);
-        retrofit.create(DownloadService.class)
+        Retrofit retrofit3 = new Retrofit.Builder()
+                .baseUrl(HOST)
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .client(HttpClientHelper.addProgressResponseListener(progressHandler))
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .build();;
+
+
+        retrofit3.create(DownloadService.class)
                 .download(url)
                 .subscribeOn(Schedulers.io())
                 .unsubscribeOn(Schedulers.io())
@@ -109,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void call(InputStream inputStream) {
                         try {
+                            //直接在子线程中保存文件
                             Log.d(TAG,"doOnNext 是否在主线程中运行:" +  Util.isMainThread());
                             File outputFile = new File(Environment.getExternalStoragePublicDirectory
                                     (Environment.DIRECTORY_DOWNLOADS), "file.apk");
@@ -134,26 +155,20 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onNext(InputStream inputStream) {
-//                        Logger.d("onNext:" + inputStream);
+                        Logger.d("onNext:" + inputStream);
                     }
                 });
     }
 
     private void download2() {
         //监听下载进度
-        final ProgressDialog dialog = new ProgressDialog(this);
-        dialog.setProgressNumberFormat("%1d KB/%2d KB");
-        dialog.setTitle("下载");
-        dialog.setMessage("正在下载，请稍后...");
-        dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-        dialog.setCancelable(false);
-        dialog.show();
 
-        Retrofit retrofit2 = ServiceGenerator.getRetrofit2();
+        final ProgressDialog dialog = createProgressDialog();
+
         HttpClientHelper2.setProgressHandler(new DownloadProgressHandler() {
             @Override
             protected void onProgress(long bytesRead, long contentLength, boolean done) {
-                Log.e("是否在主线程中运行", Util.isMainThread() + "");
+                Log.e("2是否在主线程中运行", Util.isMainThread() + "");
                 Log.e("onProgress",String.format("%d%% done\n",(100 * bytesRead) / contentLength));
                 Log.e("done","--->" + String.valueOf(done));
 
@@ -165,6 +180,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+        Retrofit retrofit2 = new Retrofit.Builder()
+                .baseUrl(HOST)
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .client(HttpClientHelper2.addProgressResponseListener())
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .build();
 
         DownloadService downloadService = retrofit2.create(DownloadService.class);
 
@@ -208,7 +230,16 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        Retrofit retrofit = ServiceGenerator.getRetrofit(progressResponseListener);
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(HOST)
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .baseUrl(HOST)
+                .client(HttpClientHelper.addProgressResponseListener(progressResponseListener))
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
+                .build();
+
+
         retrofit.create(DownloadService.class)
                 .download(url)
                 .subscribeOn(Schedulers.io())
@@ -250,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
 
                     @Override
                     public void onNext(InputStream inputStream) {
-//                        Logger.d("onNext:" + inputStream);
+                        Logger.d("onNext:" + inputStream);
                     }
                 });
     }
@@ -307,6 +338,17 @@ public class MainActivity extends AppCompatActivity {
                         Logger.d(twoResultModel.toString());
                     }
                 });
+    }
+
+    private ProgressDialog createProgressDialog() {
+        final ProgressDialog dialog = new ProgressDialog(this);
+        dialog.setProgressNumberFormat("%1d KB/%2d KB");
+        dialog.setTitle("下载");
+        dialog.setMessage("正在下载，请稍后...");
+        dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        dialog.setCancelable(false);
+        dialog.show();
+        return dialog;
     }
 
 }
