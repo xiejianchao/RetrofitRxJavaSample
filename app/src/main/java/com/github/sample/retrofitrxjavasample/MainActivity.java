@@ -111,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
                 .client(HttpClientHelper.addProgressResponseListener(progressHandler))
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                .build();;
+                .build();
 
 
         retrofit3.create(DownloadService.class)
@@ -234,7 +234,6 @@ public class MainActivity extends AppCompatActivity {
                 .baseUrl(HOST)
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                .baseUrl(HOST)
                 .client(HttpClientHelper.addProgressResponseListener(progressResponseListener))
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
                 .build();
