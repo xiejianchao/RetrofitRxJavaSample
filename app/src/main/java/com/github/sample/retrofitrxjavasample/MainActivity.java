@@ -313,8 +313,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public TwoResultModel call(GankBeauty gankBeauty, MovieModel movieModel) {
                         TwoResultModel model = new TwoResultModel();
-                        model.setT1(gankBeauty);
-                        model.setT2(movieModel);
+                        model.setGankBeauty(gankBeauty);
+                        model.setMovieModel(movieModel);
                         return model;
                     }
                 })

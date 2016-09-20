@@ -5,38 +5,38 @@ package com.github.sample.retrofitrxjavasample.model;
  */
 public class TwoResultModel<T,T2> {
 
-    private T t1;
-    private T2 t2;
+    private T gankBeauty;
+    private T2 movieModel;
 
     public TwoResultModel() {
     }
 
-    public TwoResultModel(T t1, T2 t2) {
-        this.t1 = t1;
-        this.t2 = t2;
+    public TwoResultModel(T gankBeauty, T2 movieModel) {
+        this.gankBeauty = gankBeauty;
+        this.movieModel = movieModel;
     }
 
-    public T getT1() {
-        return t1;
+    public T getGankBeauty() {
+        return gankBeauty;
     }
 
-    public void setT1(T t1) {
-        this.t1 = t1;
+    public void setGankBeauty(T gankBeauty) {
+        this.gankBeauty = gankBeauty;
     }
 
-    public T2 getT2() {
-        return t2;
+    public T2 getMovieModel() {
+        return movieModel;
     }
 
-    public void setT2(T2 t2) {
-        this.t2 = t2;
+    public void setMovieModel(T2 movieModel) {
+        this.movieModel = movieModel;
     }
 
     @Override
     public String toString() {
         return "TwoResultModel{" +
-                "t1=" + t1 +
-                ", t2=" + t2 +
+                "gankBeauty=" + gankBeauty +
+                ", movieModel=" + movieModel +
                 '}';
     }
 }
